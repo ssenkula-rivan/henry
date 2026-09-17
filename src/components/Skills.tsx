@@ -38,9 +38,9 @@ export default function Skills() {
     { icon: <IllustratorIcon />, name: 'Adobe Illustrator', level: 90, category: 'Expert' },
     { icon: <InDesignIcon />, name: 'Adobe InDesign', level: 88, category: 'Advanced' },
     { icon: <FigmaIcon />, name: 'Figma', level: 85, category: 'Advanced' },
-    { icon: <AfterEffectsIcon />, name: 'After Effects', level: 82, category: 'Advanced' },
-    { icon: <BlenderIcon />, name: 'Blender', level: 75, category: 'Proficient' },
-    { icon: <LightroomIcon />, name: 'Lightroom', level: 90, category: 'Expert' },
+    { icon: <img src="/icons/icon-ae.png" alt="After Effects" width={40} height={40} className="object-contain" />, name: 'After Effects', level: 82, category: 'Advanced' },
+    { icon: <img src="/icons/icon-blender.png" alt="Blender" width={40} height={40} className="object-contain" />, name: 'Blender', level: 75, category: 'Proficient' },
+    { icon: <img src="/icons/icon-lr.png" alt="Lightroom" width={40} height={40} className="object-contain" />, name: 'Lightroom', level: 90, category: 'Expert' },
     { icon: <PremiereProIcon />, name: 'Premiere Pro', level: 78, category: 'Proficient' },
     { icon: <FigmaIcon />, name: 'Brand Identity', level: 92, category: 'Expert' },
   ];

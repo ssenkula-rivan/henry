@@ -31,9 +31,9 @@ export default function Hero() {
     { icon: <IllustratorIcon />, name: 'Illustrator' },
     { icon: <InDesignIcon />, name: 'InDesign' },
     { icon: <FigmaIcon />, name: 'Figma' },
-    { icon: <AfterEffectsIcon />, name: 'After Effects' },
-    { icon: <BlenderIcon />, name: 'Blender' },
-    { icon: <LightroomIcon />, name: 'Lightroom' },
+    { icon: <img src="/icons/icon-ae.png" alt="After Effects" width={40} height={40} className="object-contain" />, name: 'After Effects' },
+    { icon: <img src="/icons/icon-blender.png" alt="Blender" width={40} height={40} className="object-contain" />, name: 'Blender' },
+    { icon: <img src="/icons/icon-lr.png" alt="Lightroom" width={40} height={40} className="object-contain" />, name: 'Lightroom' },
     { icon: <PremiereProIcon />, name: 'Premiere Pro' },
     { icon: <DimensionIcon />, name: 'Dimension' },
   ];
