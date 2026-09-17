@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { Redis } from "@upstash/redis";
 
 export interface ChatMessage {
   id: string;
@@ -11,56 +10,70 @@ export interface ChatMessage {
   read: boolean;
 }
 
-const DATA_FILE = path.join(process.cwd(), ".chat_history.json");
+const CHAT_KEY = "henry_portfolio_chat_messages";
 
-function loadMessages(): ChatMessage[] {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, "utf-8");
-      return JSON.parse(data);
-    }
-  } catch (e) {
-    console.error("Error reading chat file:", e);
-  }
-  return [];
+function getRedis(): Redis | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  return new Redis({ url, token });
 }
 
-function saveMessages(messages: ChatMessage[]) {
+async function loadMessages(): Promise<ChatMessage[]> {
+  const redis = getRedis();
+  if (!redis) return [];
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(messages, null, 2), "utf-8");
+    const data = await redis.get<ChatMessage[]>(CHAT_KEY);
+    return Array.isArray(data) ? data : [];
   } catch (e) {
-    console.error("Error writing chat file:", e);
+    console.error("Redis read error:", e);
+    return [];
+  }
+}
+
+async function saveMessages(messages: ChatMessage[]): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+  try {
+    await redis.set(CHAT_KEY, messages);
+  } catch (e) {
+    console.error("Redis write error:", e);
   }
 }
 
 export async function GET() {
-  const messages = loadMessages();
+  if (!getRedis()) {
+    return NextResponse.json(
+      { error: "Chat storage not configured.", messages: [], unreadCount: 0 },
+      { status: 200 }
+    );
+  }
+  const messages = await loadMessages();
   const unreadCount = messages.filter((m) => !m.read && m.sender === "client").length;
   return NextResponse.json({ messages, unreadCount });
 }
 
 export async function POST(request: NextRequest) {
+  if (!getRedis()) {
+    return NextResponse.json({ error: "Chat storage not configured. Admin must add UPSTASH_REDIS environment variables to Vercel." }, { status: 503 });
+  }
   try {
     const body = await request.json();
     const { text, sender = "client", senderName } = body;
-
     if (!text || typeof text !== "string" || !text.trim()) {
       return NextResponse.json({ error: "Message text is required" }, { status: 400 });
     }
-
-    const messages = loadMessages();
+    const messages = await loadMessages();
     const newMessage: ChatMessage = {
       id: Date.now().toString() + "-" + Math.random().toString(36).substring(2, 6),
       text: text.trim(),
       sender: sender === "owner" ? "owner" : "client",
-      senderName: senderName || (sender === "owner" ? "Henry (Owner)" : "Client"),
+      senderName: senderName || (sender === "owner" ? "Henry Mbalire" : "Visitor"),
       timestamp: new Date().toISOString(),
-      read: sender === "owner" // owner replies are automatically read
+      read: sender === "owner",
     };
-
     messages.push(newMessage);
-    saveMessages(messages);
-
+    await saveMessages(messages);
     const unreadCount = messages.filter((m) => !m.read && m.sender === "client").length;
     return NextResponse.json({ success: true, message: newMessage, unreadCount });
   } catch (e) {
@@ -69,23 +82,20 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!getRedis()) {
+    return NextResponse.json({ error: "Chat storage not configured." }, { status: 503 });
+  }
   try {
     const body = await request.json();
     const { id, action } = body;
-    const messages = loadMessages();
-
+    const messages = await loadMessages();
     if (action === "mark_all_read") {
-      messages.forEach((m) => {
-        m.read = true;
-      });
+      messages.forEach((m) => { m.read = true; });
     } else if (id) {
       const target = messages.find((m) => m.id === id);
-      if (target) {
-        target.read = true;
-      }
+      if (target) target.read = true;
     }
-
-    saveMessages(messages);
+    await saveMessages(messages);
     const unreadCount = messages.filter((m) => !m.read && m.sender === "client").length;
     return NextResponse.json({ success: true, unreadCount });
   } catch (e) {
@@ -94,8 +104,11 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE() {
+  if (!getRedis()) {
+    return NextResponse.json({ error: "Chat storage not configured." }, { status: 503 });
+  }
   try {
-    saveMessages([]);
+    await saveMessages([]);
     return NextResponse.json({ success: true, messages: [], unreadCount: 0 });
   } catch (e) {
     return NextResponse.json({ error: "Failed to clear messages" }, { status: 500 });
