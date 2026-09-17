@@ -7,504 +7,514 @@ interface Message {
   id: string;
   text: string;
   sender: "client" | "owner";
-  senderName?: string;
+  senderName: string;
   timestamp: string;
   read: boolean;
 }
+
+interface Session {
+  id: string;
+  visitorName: string;
+  status: "waiting" | "active" | "ended";
+  createdAt: string;
+  lastActivity: string;
+  unreadCount: number;
+}
+
+const font = { fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif" };
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [replyText, setReplyText] = useState("");
-  const [isSendingReply, setIsSendingReply] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState<{ valid: boolean; message: string } | null>(null);
-  const [alertBanner, setAlertBanner] = useState<string | null>(null);
-  const [storageConfigured, setStorageConfigured] = useState(true);
-  const [activeTab, setActiveTab] = useState<"inbox" | "reply">("inbox");
+  const [pwStrength, setPwStrength] = useState<{ valid: boolean; message: string } | null>(null);
 
-  const prevUnreadRef = useRef(0);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionMessages, setSessionMessages] = useState<Record<string, Message[]>>({});
+  const [replyText, setReplyText] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [banner, setBanner] = useState<string | null>(null);
+  const [storageOk, setStorageOk] = useState(true);
+
+  const prevWaitingIds = useRef<Set<string>>(new Set());
+  const bannerTimeout = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const alertTimeout = useRef<NodeJS.Timeout | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    checkAuthSession().then((auth) => {
-      setIsAuthenticated(auth);
-      setIsCheckingAuth(false);
-    });
+    checkAuthSession().then((ok) => { setIsAuthenticated(ok); setIsCheckingAuth(false); });
   }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 2500);
+    fetchAll();
+    const interval = setInterval(fetchAll, 2500);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (activeSessionId) {
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
+      setTimeout(() => replyRef.current?.focus(), 120);
+    }
+  }, [activeSessionId, sessionMessages]);
+
   const playChime = () => {
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.2);
+      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.25);
       gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
     } catch {}
   };
 
-  const fetchMessages = async () => {
+  const showBanner = (text: string) => {
+    setBanner(text);
+    if (bannerTimeout.current) clearTimeout(bannerTimeout.current);
+    bannerTimeout.current = setTimeout(() => setBanner(null), 8000);
+  };
+
+  const fetchAll = async () => {
     try {
-      const res = await fetch("/api/chat/messages");
+      const res = await fetch("/api/chat/sessions");
       const data = await res.json();
-      if (data.error && !data.messages) {
-        setStorageConfigured(false);
-        return;
-      }
-      setStorageConfigured(true);
-      const loaded: Message[] = data.messages || [];
-      const newUnread: number = data.unreadCount || 0;
+      if (!data.sessions) { setStorageOk(false); return; }
+      setStorageOk(true);
+      const allSessions: Session[] = data.sessions || [];
 
-      if (newUnread > prevUnreadRef.current && prevUnreadRef.current >= 0 && isAuthenticated) {
+      // Detect new waiting sessions
+      const newWaiting = allSessions.filter(
+        (s) => s.status === "waiting" && !prevWaitingIds.current.has(s.id)
+      );
+      if (newWaiting.length > 0) {
         playChime();
-        const latest = [...loaded].reverse().find((m) => m.sender === "client" && !m.read);
-        if (latest) {
-          const preview = latest.text.length > 55 ? latest.text.slice(0, 55) + "..." : latest.text;
-          setAlertBanner(`New message received: "${preview}"`);
-          if (alertTimeout.current) clearTimeout(alertTimeout.current);
-          alertTimeout.current = setTimeout(() => setAlertBanner(null), 7000);
-        }
+        showBanner(`Incoming chat from ${newWaiting.map((s) => s.visitorName).join(", ")}`);
+        newWaiting.forEach((s) => prevWaitingIds.current.add(s.id));
       }
 
-      prevUnreadRef.current = newUnread;
-      setMessages(loaded);
-      setUnreadCount(newUnread);
-    } catch (e) {
-      console.error("Admin fetch error:", e);
-    }
+      setSessions(allSessions);
+
+      // Fetch messages for active sessions
+      const active = allSessions.filter((s) => s.status !== "ended");
+      await Promise.all(
+        active.map(async (sess) => {
+          const mRes = await fetch(`/api/chat/messages?sessionId=${sess.id}`);
+          const mData = await mRes.json();
+          if (mData.messages) {
+            setSessionMessages((prev) => ({ ...prev, [sess.id]: mData.messages }));
+          }
+        })
+      );
+    } catch {}
+  };
+
+  const acceptSession = async (sessionId: string) => {
+    await fetch("/api/chat/sessions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, status: "active" }),
+    });
+    setActiveSessionId(sessionId);
+    await fetchAll();
+    // Mark as read
+    await fetch("/api/chat/messages", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, action: "mark_all_read" }),
+    });
+  };
+
+  const endSession = async (sessionId: string) => {
+    if (!confirm("End this chat session?")) return;
+    await fetch("/api/chat/sessions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, status: "ended" }),
+    });
+    if (activeSessionId === sessionId) setActiveSessionId(null);
+    await fetchAll();
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    await fetch("/api/chat/sessions", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    });
+    if (activeSessionId === sessionId) setActiveSessionId(null);
+    await fetchAll();
+  };
+
+  const sendReply = async () => {
+    if (!replyText.trim() || !activeSessionId || isSending) return;
+    setIsSending(true);
+    try {
+      await fetch("/api/chat/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: activeSessionId, text: replyText.trim(), sender: "owner", senderName: "Henry Mbalire" }),
+      });
+      setReplyText("");
+      await fetchAll();
+    } catch {}
+    setIsSending(false);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
-    if (!username.trim() || !password.trim()) {
-      setLoginError("Please enter both username and password.");
-      return;
-    }
+    if (!username.trim() || !password.trim()) { setLoginError("Enter both username and password."); return; }
     setIsLoggingIn(true);
     const result = await loginUser(username.trim(), password.trim());
     setIsLoggingIn(false);
-    if (result.success) {
-      setIsAuthenticated(true);
-      setUsername("");
-      setPassword("");
-    } else {
-      setLoginError(result.error || "Invalid credentials. Please try again.");
-    }
+    if (result.success) { setIsAuthenticated(true); setUsername(""); setPassword(""); }
+    else setLoginError(result.error || "Invalid credentials.");
   };
 
-  const handleLogout = async () => {
-    await logoutUser();
-    setIsAuthenticated(false);
+  const formatTime = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const formatAge = (iso: string) => {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
   };
 
-  const sendReply = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!replyText.trim() || isSendingReply) return;
-    setIsSendingReply(true);
-    try {
-      const res = await fetch("/api/chat/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: replyText.trim(), sender: "owner", senderName: "Henry Mbalire" }),
-      });
-      if (res.ok) {
-        setReplyText("");
-        await fetchMessages();
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }
-    } catch {}
-    setIsSendingReply(false);
-  };
+  const waitingSessions = sessions.filter((s) => s.status === "waiting");
+  const activeSessions = sessions.filter((s) => s.status === "active");
+  const endedSessions = sessions.filter((s) => s.status === "ended");
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const activeMessages = activeSessionId ? (sessionMessages[activeSessionId] || []) : [];
+  const totalUnread = sessions.reduce((acc, s) => acc + (s.unreadCount || 0), 0);
 
-  const markAllRead = async () => {
-    await fetch("/api/chat/messages", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "mark_all_read" }),
-    });
-    await fetchMessages();
-  };
-
-  const clearHistory = async () => {
-    if (!confirm("Clear all chat history? This action cannot be undone.")) return;
-    await fetch("/api/chat/messages", { method: "DELETE" });
-    setMessages([]);
-    setUnreadCount(0);
-    prevUnreadRef.current = 0;
-  };
-
-  const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-  const formatDateLabel = (iso: string) => {
-    const d = new Date(iso);
-    const today = new Date();
-    if (d.toDateString() === today.toDateString()) return "Today";
-    return d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-  };
-
-  const baseFont = { fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif" };
-
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center" style={baseFont}>
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-[#003087] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-gray-500 text-sm">Verifying session...</p>
-        </div>
+  if (isCheckingAuth) return (
+    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center" style={font}>
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-[#003087] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+        <p className="text-gray-500 text-sm">Verifying session...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center px-4" style={baseFont}>
-        <div className="w-full max-w-[400px]">
-          {/* Bank-style header */}
-          <div className="bg-[#003087] px-6 py-5 text-white text-center">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3">
-              <span className="text-[#003087] font-bold text-sm">MH</span>
+  if (!isAuthenticated) return (
+    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center px-4" style={font}>
+      <div className="w-full max-w-[400px]">
+        <div className="bg-[#003087] px-6 py-5 text-white text-center">
+          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3">
+            <span className="text-[#003087] font-bold text-sm">MH</span>
+          </div>
+          <h1 className="text-lg font-semibold">Portfolio Administration</h1>
+          <p className="text-blue-200 text-xs mt-1">Secure Staff Sign-In</p>
+        </div>
+        <div className="bg-white border border-gray-200 px-6 py-6 shadow-sm">
+          {loginError && <div className="bg-red-50 border-l-4 border-red-600 text-red-700 px-4 py-3 mb-5 text-sm">{loginError}</div>}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Username</label>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username"
+                className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087]" />
             </div>
-            <h1 className="text-lg font-semibold tracking-wide">Portfolio Administration</h1>
-            <p className="text-blue-200 text-xs mt-1">Secure Staff Sign-In</p>
-          </div>
-
-          <div className="bg-white border border-gray-200 px-6 py-6 shadow-sm">
-            {loginError && (
-              <div className="bg-red-50 border-l-4 border-red-600 text-red-700 px-4 py-3 mb-5 text-sm">
-                {loginError}
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoComplete="username"
-                  className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087] transition-all rounded-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setPasswordStrength(e.target.value ? validatePasswordStrength(e.target.value) : null);
-                  }}
-                  autoComplete="current-password"
-                  className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087] transition-all rounded-none"
-                />
-                {passwordStrength && (
-                  <p className={`text-xs mt-1.5 ${passwordStrength.valid ? "text-green-600" : "text-amber-600"}`}>
-                    {passwordStrength.message}
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoggingIn}
-                className="w-full bg-[#003087] hover:bg-[#002070] text-white font-semibold py-3 text-sm transition-colors disabled:opacity-50 rounded-none mt-2"
-              >
-                {isLoggingIn ? "Signing In..." : "Sign In"}
-              </button>
-            </form>
-          </div>
-
-          <div className="bg-gray-50 border border-t-0 border-gray-200 px-6 py-3 text-center">
-            <p className="text-[11px] text-gray-400">
-              This portal is restricted to authorized personnel only.
-            </p>
-          </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Password</label>
+              <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPwStrength(e.target.value ? validatePasswordStrength(e.target.value) : null); }} autoComplete="current-password"
+                className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087]" />
+              {pwStrength && <p className={`text-xs mt-1.5 ${pwStrength.valid ? "text-green-600" : "text-amber-600"}`}>{pwStrength.message}</p>}
+            </div>
+            <button type="submit" disabled={isLoggingIn} className="w-full bg-[#003087] hover:bg-[#002070] text-white font-semibold py-3 text-sm transition-colors disabled:opacity-50 mt-2">
+              {isLoggingIn ? "Signing In..." : "Sign In"}
+            </button>
+          </form>
+        </div>
+        <div className="bg-gray-50 border border-t-0 border-gray-200 px-6 py-3 text-center">
+          <p className="text-[11px] text-gray-400">Restricted to authorized personnel only.</p>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5]" style={baseFont}>
-      {/* Alert Banner */}
-      {alertBanner && (
-        <div className="bg-[#c8102e] text-white px-6 py-3 flex items-center justify-between text-sm font-medium">
+    <div className="min-h-screen bg-[#f0f2f5] flex flex-col" style={font}>
+      {/* Banner */}
+      {banner && (
+        <div className="bg-[#c8102e] text-white px-6 py-3 flex items-center justify-between text-sm font-medium flex-shrink-0">
           <div className="flex items-center gap-3">
             <span className="w-2 h-2 bg-white rounded-full animate-pulse flex-shrink-0"></span>
-            <span>{alertBanner}</span>
+            <span>{banner}</span>
           </div>
-          <button onClick={() => setAlertBanner(null)} className="text-red-200 hover:text-white text-xs ml-4">
-            Dismiss
-          </button>
+          <button onClick={() => setBanner(null)} className="text-red-200 hover:text-white text-xs ml-4">Dismiss</button>
         </div>
       )}
 
-      {/* Top Header */}
-      <header className="bg-[#003087] text-white border-b border-[#002070]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      {/* Header */}
+      <header className="bg-[#003087] text-white border-b border-[#002070] flex-shrink-0">
+        <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
               <span className="text-[#003087] font-bold text-xs">MH</span>
             </div>
             <div>
-              <h1 className="font-semibold text-sm">Portfolio Admin</h1>
-              <p className="text-blue-200 text-[11px]">Live Chat Management System</p>
+              <h1 className="font-semibold text-sm">Support Console</h1>
+              <p className="text-blue-200 text-[11px]">Live Chat Management</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {unreadCount > 0 && (
-              <span className="bg-[#c8102e] text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                {unreadCount} Unread
-              </span>
+            {totalUnread > 0 && (
+              <span className="bg-[#c8102e] text-white text-xs font-bold px-2.5 py-1 rounded-full">{totalUnread} Unread</span>
             )}
-            <button
-              onClick={handleLogout}
-              className="text-blue-200 hover:text-white text-xs border border-blue-400 px-3 py-1.5 transition-colors"
-            >
+            <button onClick={async () => { await (await import("@/lib/auth")).logoutUser(); setIsAuthenticated(false); }}
+              className="text-blue-200 hover:text-white text-xs border border-blue-400 px-3 py-1.5 transition-colors">
               Sign Out
             </button>
           </div>
         </div>
       </header>
 
-      {/* Secondary Nav */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6">
-          <nav className="flex gap-0">
-            <button
-              onClick={() => setActiveTab("inbox")}
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "inbox"
-                  ? "border-[#003087] text-[#003087]"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Inbox
-              {unreadCount > 0 && (
-                <span className="ml-2 bg-[#c8102e] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("reply")}
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "reply"
-                  ? "border-[#003087] text-[#003087]"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Compose Reply
-            </button>
-          </nav>
+      {!storageOk && (
+        <div className="bg-amber-50 border-b border-amber-300 px-6 py-3">
+          <p className="text-amber-800 text-xs font-semibold">
+            Chat storage not configured — add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to Vercel env vars, then redeploy.
+          </p>
         </div>
-      </div>
+      )}
 
-      <main className="max-w-6xl mx-auto px-6 py-6">
-        {!storageConfigured && (
-          <div className="bg-amber-50 border border-amber-300 px-5 py-4 mb-6">
-            <p className="text-amber-800 font-semibold text-sm">Chat Storage Not Configured</p>
-            <p className="text-amber-700 text-xs mt-1">
-              Add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to your Vercel environment variables,
-              then redeploy. Get free credentials at upstash.com.
-            </p>
-          </div>
-        )}
+      {/* Main Layout: Sidebar + Chat Area */}
+      <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white border border-gray-200 px-5 py-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Total Messages</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-1">{messages.length}</p>
-          </div>
-          <div className="bg-white border border-gray-200 px-5 py-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Unread</p>
-            <p className={`text-2xl font-semibold mt-1 ${unreadCount > 0 ? "text-[#c8102e]" : "text-gray-900"}`}>
-              {unreadCount}
-            </p>
-          </div>
-          <div className="bg-white border border-gray-200 px-5 py-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Alert System</p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              <span className="text-sm text-gray-700 font-medium">Active</span>
+        {/* Sidebar: Sessions */}
+        <div className="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 overflow-hidden">
+          {/* Stats */}
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex gap-4">
+            <div className="text-center">
+              <div className="text-lg font-bold text-amber-600">{waitingSessions.length}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">Waiting</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-green-600">{activeSessions.length}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">Active</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-gray-400">{endedSessions.length}</div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">Ended</div>
             </div>
           </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {/* Waiting — incoming calls */}
+            {waitingSessions.length > 0 && (
+              <>
+                <div className="px-4 py-2 bg-amber-50 border-b border-amber-100">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Incoming Requests</span>
+                </div>
+                {waitingSessions.map((s) => (
+                  <div key={s.id} className="px-4 py-3 border-b border-gray-100 bg-amber-50 hover:bg-amber-100 transition-colors">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {s.visitorName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{s.visitorName}</p>
+                          <p className="text-[11px] text-gray-500">{formatAge(s.createdAt)}</p>
+                        </div>
+                      </div>
+                      <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse mt-1 flex-shrink-0"></span>
+                    </div>
+                    <button
+                      onClick={() => acceptSession(s.id)}
+                      className="w-full bg-[#003087] hover:bg-[#002070] text-white text-xs font-semibold py-1.5 transition-colors"
+                    >
+                      Accept Chat
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Active */}
+            {activeSessions.length > 0 && (
+              <>
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-green-700">Active Chats</span>
+                </div>
+                {activeSessions.map((s) => (
+                  <div
+                    key={s.id}
+                    onClick={() => { setActiveSessionId(s.id); }}
+                    className={`px-4 py-3 border-b border-gray-100 cursor-pointer transition-colors ${activeSessionId === s.id ? "bg-blue-50 border-l-4 border-l-[#003087]" : "hover:bg-gray-50"}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-[#003087] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {s.visitorName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{s.visitorName}</p>
+                          <p className="text-[11px] text-gray-500">Active · {formatAge(s.lastActivity)}</p>
+                        </div>
+                      </div>
+                      {s.unreadCount > 0 && (
+                        <span className="bg-[#c8102e] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
+                          {s.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Ended */}
+            {endedSessions.length > 0 && (
+              <>
+                <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ended</span>
+                </div>
+                {endedSessions.map((s) => (
+                  <div key={s.id} className="px-4 py-3 border-b border-gray-100 opacity-60">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-bold flex-shrink-0">
+                          {s.visitorName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">{s.visitorName}</p>
+                          <p className="text-[11px] text-gray-400">Ended · {formatAge(s.lastActivity)}</p>
+                        </div>
+                      </div>
+                      <button onClick={() => deleteSession(s.id)} className="text-[11px] text-red-400 hover:text-red-600 ml-2">
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {sessions.length === 0 && (
+              <div className="px-4 py-12 text-center text-gray-400 text-sm">
+                No chat requests yet. When a visitor starts a chat, it will appear here.
+              </div>
+            )}
+          </div>
         </div>
 
-        {activeTab === "inbox" && (
-          <div className="bg-white border border-gray-200 shadow-sm">
-            {/* Table Header */}
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-800">Client Messages</h2>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {!activeSession ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <span className="text-gray-400 text-2xl font-light">–</span>
+              </div>
+              <p className="text-gray-600 font-semibold text-base">No Chat Selected</p>
+              <p className="text-gray-400 text-sm mt-2 max-w-xs">
+                {waitingSessions.length > 0
+                  ? `${waitingSessions.length} visitor${waitingSessions.length > 1 ? "s are" : " is"} waiting — click "Accept Chat" to begin.`
+                  : "Accept an incoming chat request from the sidebar to begin a conversation."}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Chat header */}
+              <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#003087] flex items-center justify-center text-white font-bold text-sm">
+                    {activeSession.visitorName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">{activeSession.visitorName}</p>
+                    <p className="text-[11px] text-gray-500">
+                      {activeSession.status === "active" ? "Active session" : "Session ended"} · {formatAge(activeSession.lastActivity)}
+                    </p>
+                  </div>
+                </div>
+                {activeSession.status === "active" && (
                   <button
-                    onClick={markAllRead}
-                    className="text-xs text-[#003087] border border-[#003087] px-3 py-1.5 hover:bg-[#003087] hover:text-white transition-colors"
+                    onClick={() => endSession(activeSession.id)}
+                    className="text-xs text-red-600 border border-red-300 px-4 py-2 hover:bg-red-50 transition-colors font-semibold"
                   >
-                    Mark All Read
+                    End Chat
                   </button>
                 )}
-                <button
-                  onClick={clearHistory}
-                  className="text-xs text-red-600 border border-red-300 px-3 py-1.5 hover:bg-red-50 transition-colors"
-                >
-                  Clear History
-                </button>
               </div>
-            </div>
 
-            {/* Messages */}
-            <div className="divide-y divide-gray-100" style={{ maxHeight: "480px", overflowY: "auto" }}>
-              {messages.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <p className="text-gray-400 text-sm">No messages yet. When visitors use the live chat, their messages will appear here.</p>
-                </div>
-              ) : (
-                messages.map((msg, index) => {
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto bg-[#f5f6f8] px-6 py-4 space-y-3">
+                {activeMessages.length === 0 && (
+                  <div className="text-center text-gray-400 text-sm mt-8">
+                    No messages yet in this session.
+                  </div>
+                )}
+                {activeMessages.map((msg, index) => {
                   const isClient = msg.sender === "client";
-                  const showDate =
-                    index === 0 ||
-                    formatDateLabel(msg.timestamp) !== formatDateLabel(messages[index - 1].timestamp);
-
+                  const showDate = index === 0 || new Date(msg.timestamp).toDateString() !== new Date(activeMessages[index - 1].timestamp).toDateString();
                   return (
                     <div key={msg.id}>
                       {showDate && (
-                        <div className="bg-gray-50 px-5 py-2 text-[11px] text-gray-400 font-medium uppercase tracking-wider border-y border-gray-100">
-                          {formatDateLabel(msg.timestamp)}
+                        <div className="text-center text-[11px] text-gray-400 my-2 font-medium uppercase tracking-wider">
+                          {new Date(msg.timestamp).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
                         </div>
                       )}
-                      <div
-                        className={`px-5 py-4 flex gap-4 ${
-                          isClient && !msg.read ? "bg-blue-50 border-l-4 border-l-[#003087]" : ""
-                        }`}
-                      >
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                            isClient ? "bg-[#003087] text-white" : "bg-gray-200 text-gray-700"
-                          }`}
-                        >
-                          {isClient ? "V" : "HM"}
+                      <div className={`flex flex-col ${isClient ? "items-start" : "items-end"}`}>
+                        <span className="text-[11px] text-gray-500 mb-1 px-1">{msg.senderName}</span>
+                        <div className={`max-w-[70%] px-4 py-2.5 text-sm leading-relaxed ${isClient ? "bg-white border border-gray-200 text-gray-800" : "bg-[#003087] text-white"}`}>
+                          {msg.text}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-semibold text-gray-700">
-                              {isClient ? "Visitor" : "Henry Mbalire (You)"}
-                            </span>
-                            {isClient && !msg.read && (
-                              <span className="bg-[#c8102e] text-white text-[9px] font-bold px-1.5 py-0.5 uppercase tracking-wider">
-                                Unread
-                              </span>
-                            )}
-                            <span className="text-[11px] text-gray-400 ml-auto flex-shrink-0">
-                              {formatTime(msg.timestamp)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-800 leading-relaxed break-words">{msg.text}</p>
-                        </div>
+                        <span className="text-[11px] text-gray-400 mt-1 px-1">{formatTime(msg.timestamp)}</span>
                       </div>
                     </div>
                   );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-        )}
+                })}
+                <div ref={messagesEndRef} />
+              </div>
 
-        {activeTab === "reply" && (
-          <div className="bg-white border border-gray-200 shadow-sm">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-800">Send Reply to Visitor</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Your reply will appear in the visitor's live chat window in real time.</p>
-            </div>
-            <div className="p-5">
-              {/* Recent context */}
-              {messages.filter((m) => m.sender === "client").length > 0 && (
-                <div className="mb-4 bg-gray-50 border border-gray-200 px-4 py-3">
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium mb-2">Latest Visitor Message</p>
-                  <p className="text-sm text-gray-700 italic">
-                    "{[...messages].reverse().find((m) => m.sender === "client")?.text}"
-                  </p>
+              {/* Reply box */}
+              {activeSession.status === "active" && (
+                <div className="bg-white border-t border-gray-200 px-6 py-4 flex-shrink-0">
+                  <div className="flex gap-3 items-start">
+                    <textarea
+                      ref={replyRef}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) sendReply(); }}
+                      rows={2}
+                      placeholder={`Reply to ${activeSession.visitorName}...`}
+                      className="flex-1 border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087] resize-none"
+                      style={font}
+                    />
+                    <button
+                      onClick={sendReply}
+                      disabled={!replyText.trim() || isSending}
+                      className="bg-[#003087] hover:bg-[#002070] text-white px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-40 self-end"
+                    >
+                      {isSending ? "Sending..." : "Send"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">Ctrl+Enter to send</p>
                 </div>
               )}
 
-              <form onSubmit={sendReply} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
-                    Your Reply
-                  </label>
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    rows={5}
-                    placeholder="Type your reply to the visitor..."
-                    className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087] transition-all rounded-none resize-none"
-                    style={{ fontFamily: "inherit" }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) sendReply();
-                    }}
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">Press Ctrl+Enter to send</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="submit"
-                    disabled={isSendingReply || !replyText.trim() || !storageConfigured}
-                    className="bg-[#003087] hover:bg-[#002070] text-white font-semibold px-6 py-2.5 text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed rounded-none"
-                  >
-                    {isSendingReply ? "Sending..." : "Send Reply"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReplyText("")}
-                    className="text-gray-500 hover:text-gray-700 text-sm border border-gray-300 px-4 py-2.5 transition-colors"
-                  >
-                    Clear
+              {activeSession.status === "ended" && (
+                <div className="bg-gray-50 border-t border-gray-200 px-6 py-4 text-center flex-shrink-0">
+                  <p className="text-gray-500 text-sm">This chat session has ended.</p>
+                  <button onClick={() => deleteSession(activeSession.id)} className="text-red-500 text-xs mt-2 hover:text-red-700">
+                    Remove from history
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        <p className="text-[11px] text-gray-400 text-center mt-6">
-          Henry Mbalire Portfolio Administration - Authorized access only
-        </p>
-      </main>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
