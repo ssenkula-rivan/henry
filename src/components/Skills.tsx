@@ -1,6 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
+import PhotoshopIcon from '@/components/PhotoshopIcon';
+import IllustratorIcon from '@/components/IllustratorIcon';
+import InDesignIcon from '@/components/InDesignIcon';
+import FigmaIcon from '@/components/FigmaIcon';
+import AfterEffectsIcon from '@/components/AfterEffectsIcon';
+import BlenderIcon from '@/components/BlenderIcon';
+import LightroomIcon from '@/components/LightroomIcon';
+import PremiereProIcon from '@/components/PremiereProIcon';
 
 export default function Skills() {
   useEffect(() => {
@@ -26,15 +34,15 @@ export default function Skills() {
   }, []);
 
   const skills = [
-    { name: 'Adobe Photoshop', level: 95, category: 'Expert' },
-    { name: 'Adobe Illustrator', level: 90, category: 'Expert' },
-    { name: 'Adobe InDesign', level: 88, category: 'Advanced' },
-    { name: 'Figma', level: 85, category: 'Advanced' },
-    { name: 'After Effects', level: 82, category: 'Advanced' },
-    { name: 'Blender', level: 75, category: 'Proficient' },
-    { name: 'Lightroom', level: 90, category: 'Expert' },
-    { name: 'Premiere Pro', level: 78, category: 'Proficient' },
-    { name: 'Brand Identity', level: 92, category: 'Expert' },
+    { icon: <PhotoshopIcon />, name: 'Adobe Photoshop', level: 95, category: 'Expert' },
+    { icon: <IllustratorIcon />, name: 'Adobe Illustrator', level: 90, category: 'Expert' },
+    { icon: <InDesignIcon />, name: 'Adobe InDesign', level: 88, category: 'Advanced' },
+    { icon: <FigmaIcon />, name: 'Figma', level: 85, category: 'Advanced' },
+    { icon: <AfterEffectsIcon />, name: 'After Effects', level: 82, category: 'Advanced' },
+    { icon: <BlenderIcon />, name: 'Blender', level: 75, category: 'Proficient' },
+    { icon: <LightroomIcon />, name: 'Lightroom', level: 90, category: 'Expert' },
+    { icon: <PremiereProIcon />, name: 'Premiere Pro', level: 78, category: 'Proficient' },
+    { icon: <FigmaIcon />, name: 'Brand Identity', level: 92, category: 'Expert' },
   ];
 
   return (
@@ -58,7 +66,12 @@ export default function Skills() {
               {/* Hover effect top border */}
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#8b5cf6] transform scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100"></div>
               
-              <div className="skill-name font-serif text-xl font-bold mb-4 text-white">{skill.name}</div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="skill-icon-wrapper">
+                  {skill.icon}
+                </div>
+                <div className="skill-name font-serif text-xl font-bold text-white">{skill.name}</div>
+              </div>
               
               <div className="skill-level-bar w-full h-2 bg-[rgba(255,255,255,0.1)] mt-4 relative rounded-full">
                 <div 

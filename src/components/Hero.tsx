@@ -1,6 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
+import PhotoshopIcon from '@/components/PhotoshopIcon';
+import IllustratorIcon from '@/components/IllustratorIcon';
+import InDesignIcon from '@/components/InDesignIcon';
+import FigmaIcon from '@/components/FigmaIcon';
+import AfterEffectsIcon from '@/components/AfterEffectsIcon';
+import BlenderIcon from '@/components/BlenderIcon';
+import LightroomIcon from '@/components/LightroomIcon';
+import PremiereProIcon from '@/components/PremiereProIcon';
+import DimensionIcon from '@/components/DimensionIcon';
 
 export default function Hero() {
   useEffect(() => {
@@ -17,8 +26,16 @@ export default function Hero() {
     return () => observer.disconnect();
   }, []);
 
-  const technologies = [
-    'Photoshop', 'Illustrator', 'InDesign', 'Figma', 'After Effects', 'Blender', 'Lightroom', 'Premiere Pro', 'Dimension'
+  const tools = [
+    { icon: <PhotoshopIcon />, name: 'Photoshop' },
+    { icon: <IllustratorIcon />, name: 'Illustrator' },
+    { icon: <InDesignIcon />, name: 'InDesign' },
+    { icon: <FigmaIcon />, name: 'Figma' },
+    { icon: <AfterEffectsIcon />, name: 'After Effects' },
+    { icon: <BlenderIcon />, name: 'Blender' },
+    { icon: <LightroomIcon />, name: 'Lightroom' },
+    { icon: <PremiereProIcon />, name: 'Premiere Pro' },
+    { icon: <DimensionIcon />, name: 'Dimension' },
   ];
 
   return (
@@ -57,11 +74,16 @@ export default function Hero() {
         
         <div className="technologies-section">
           <h3 className="font-mono text-xs tracking-[0.12em] uppercase text-[#888] mb-4">Design tools I work with:</h3>
-          <div className="technologies-list flex flex-wrap gap-3">
-            {technologies.map((tech, index) => (
-              <span key={index} className="tech-item bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] px-4 py-2 font-mono text-xs tracking-wider uppercase hover:bg-[#8b5cf6] hover:text-black transition-all duration-200 cursor-default">
-                {tech}
-              </span>
+          <div className="technologies-list flex flex-wrap gap-4">
+            {tools.map((tool, index) => (
+              <div key={index} className="tool-item flex flex-col items-center gap-2 group cursor-pointer">
+                <div className="tool-icon group-hover:scale-110 transition-transform duration-300">
+                  {tool.icon}
+                </div>
+                <span className="tool-name text-[#888] text-xs font-mono tracking-wider uppercase group-hover:text-[#8b5cf6] transition-colors duration-300">
+                  {tool.name}
+                </span>
+              </div>
             ))}
           </div>
         </div>
