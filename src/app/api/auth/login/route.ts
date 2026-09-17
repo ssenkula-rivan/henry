@@ -14,14 +14,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isPasswordMatch =
-      password === adminPassword ||
-      password === adminPassword + "#" ||
-      password + "#" === adminPassword;
+    const cleanUser = typeof username === "string" ? username.trim() : "";
+    const cleanPass = typeof password === "string" ? password.trim() : "";
+    const cleanAdminUser = adminUsername.trim();
+    const cleanAdminPass = adminPassword.trim();
 
-    if (username === adminUsername && isPasswordMatch) {
+    const isUserMatch = cleanUser.toLowerCase() === cleanAdminUser.toLowerCase();
+    const isPassMatch =
+      cleanPass === cleanAdminPass ||
+      cleanPass === cleanAdminPass + "#" ||
+      cleanPass + "#" === cleanAdminPass;
+
+    if (isUserMatch && isPassMatch) {
       const sessionToken = Buffer.from(
-        `${Date.now()}-${username}-${Math.random().toString(36).substring(2)}`
+        `${Date.now()}-${cleanUser}-${Math.random().toString(36).substring(2)}`
       ).toString("base64");
 
       const response = NextResponse.json({
