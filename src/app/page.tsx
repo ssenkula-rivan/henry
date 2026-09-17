@@ -9,6 +9,7 @@ import Blog from '@/components/Blog';
 import CTA from '@/components/CTA';
 import Testimonial from '@/components/Testimonial';
 import Footer from '@/components/Footer';
+import LiveChat from '@/components/LiveChat';
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
       <CTA />
       <Testimonial />
       <Footer />
+      <LiveChat />
     </div>
   );
 }
