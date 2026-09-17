@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
+import { sendPushToAdmins } from "@/lib/push";
 
 export interface ChatSession {
   id: string;
@@ -66,6 +67,15 @@ export async function POST(request: NextRequest) {
     const sessions = await getSessions();
     sessions.push(newSession);
     await saveSessions(sessions);
+
+    // Trigger background push notification to all admin devices (works even if tab is closed)
+    sendPushToAdmins({
+      title: `Incoming Chat: ${newSession.visitorName}`,
+      body: `${newSession.visitorName} is requesting a support session. Click to answer.`,
+      url: "/admin",
+      tag: `session_${newSession.id}`,
+      sessionId: newSession.id,
+    }).catch((err) => console.error("Push notification error:", err));
 
     return NextResponse.json({ success: true, session: newSession });
   } catch {

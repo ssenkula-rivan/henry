@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 import { getSessions, saveSessions } from "@/app/api/chat/sessions/route";
+import { sendPushToAdmins } from "@/lib/push";
 
 export interface ChatMessage {
   id: string;
@@ -82,6 +83,17 @@ export async function POST(request: NextRequest) {
       session.lastActivity = newMsg.timestamp;
       session.unreadCount = messages.filter((m) => !m.read && m.sender === "client").length;
       await saveSessions(sessions);
+    }
+
+    // If client sent message, notify admin in the background (even if tab is closed)
+    if (newMsg.sender === "client") {
+      sendPushToAdmins({
+        title: `Message from ${newMsg.senderName}`,
+        body: newMsg.text.slice(0, 120),
+        url: "/admin",
+        tag: `msg_${sessionId}`,
+        sessionId,
+      }).catch((err) => console.error("Push notification error:", err));
     }
 
     return NextResponse.json({ success: true, message: newMsg });

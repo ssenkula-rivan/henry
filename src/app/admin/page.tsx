@@ -23,6 +23,17 @@ interface Session {
 
 const font = { fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif" };
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -40,14 +51,42 @@ export default function AdminPage() {
   const [banner, setBanner] = useState<string | null>(null);
   const [storageOk, setStorageOk] = useState(true);
 
+  // Push notification state
+  const [pushStatus, setPushStatus] = useState<"unsupported" | "prompt" | "granted" | "denied">("prompt");
+  const [isSubscribingPush, setIsSubscribingPush] = useState(false);
+  const [pushTestMsg, setPushTestMsg] = useState<string | null>(null);
+
   const prevWaitingIds = useRef<Set<string>>(new Set());
   const bannerTimeout = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const replyRef = useRef<HTMLTextAreaElement>(null);
+  const titleIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    checkAuthSession().then((ok) => { setIsAuthenticated(ok); setIsCheckingAuth(false); });
+    checkAuthSession().then((ok) => {
+      setIsAuthenticated(ok);
+      setIsCheckingAuth(false);
+    });
   }, []);
+
+  // Check and initialize push notifications
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushStatus("unsupported");
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      setPushStatus("granted");
+      ensurePushSubscribed();
+    } else if (Notification.permission === "denied") {
+      setPushStatus("denied");
+    } else {
+      setPushStatus("prompt");
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -63,20 +102,110 @@ export default function AdminPage() {
     }
   }, [activeSessionId, sessionMessages]);
 
-  const playChime = () => {
+  // Tab Title alerting
+  const flashTabTitle = (alertText: string) => {
+    if (titleIntervalRef.current) clearInterval(titleIntervalRef.current);
+    let toggle = false;
+    let count = 0;
+    titleIntervalRef.current = setInterval(() => {
+      document.title = toggle ? alertText : "Support Console | Henry Mbalire";
+      toggle = !toggle;
+      count++;
+      if (count > 20) {
+        if (titleIntervalRef.current) clearInterval(titleIntervalRef.current);
+        document.title = "Support Console | Henry Mbalire";
+      }
+    }, 800);
+  };
+
+  // Ringtone / Chime sound
+  const playIncomingRing = () => {
     try {
       const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const ctx = new Ctx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.25);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(); osc.stop(ctx.currentTime + 0.5);
+
+      // Play 2-burst support call chime
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + duration);
+      };
+
+      playTone(587.33, 0.0, 0.2); // D5
+      playTone(880.00, 0.15, 0.35); // A5
+      playTone(587.33, 0.5, 0.2); // D5
+      playTone(880.00, 0.65, 0.45); // A5
     } catch {}
+  };
+
+  const ensurePushSubscribed = async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const res = await fetch("/api/push/vapid-public-key");
+        const { publicKey } = await res.json();
+        if (!publicKey) return;
+
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+      }
+
+      if (sub) {
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subscription: sub }),
+        });
+        setPushStatus("granted");
+      }
+    } catch (err) {
+      console.error("Error setting up push subscription:", err);
+    }
+  };
+
+  const handleEnablePush = async () => {
+    setIsSubscribingPush(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        await ensurePushSubscribed();
+        showBanner("Background push alerts enabled! You will be notified even when this tab is closed.");
+      } else {
+        setPushStatus(permission === "denied" ? "denied" : "prompt");
+        showBanner("Push notification permission was not granted.");
+      }
+    } catch {
+      showBanner("Failed to enable push notifications.");
+    }
+    setIsSubscribingPush(false);
+  };
+
+  const handleTestPush = async () => {
+    setPushTestMsg("Sending test alert...");
+    try {
+      const res = await fetch("/api/push/test", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setPushTestMsg("Alert sent! Check your system notification & audio.");
+        setTimeout(() => setPushTestMsg(null), 6000);
+      } else {
+        setPushTestMsg(data.error || "Failed to trigger test.");
+      }
+    } catch {
+      setPushTestMsg("Error triggering test push.");
+    }
   };
 
   const showBanner = (text: string) => {
@@ -89,7 +218,10 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/chat/sessions");
       const data = await res.json();
-      if (!data.sessions) { setStorageOk(false); return; }
+      if (!data.sessions) {
+        setStorageOk(false);
+        return;
+      }
       setStorageOk(true);
       const allSessions: Session[] = data.sessions || [];
 
@@ -98,8 +230,10 @@ export default function AdminPage() {
         (s) => s.status === "waiting" && !prevWaitingIds.current.has(s.id)
       );
       if (newWaiting.length > 0) {
-        playChime();
-        showBanner(`Incoming chat from ${newWaiting.map((s) => s.visitorName).join(", ")}`);
+        playIncomingRing();
+        const names = newWaiting.map((s) => s.visitorName).join(", ");
+        flashTabTitle(`CALL: ${names}`);
+        showBanner(`Incoming chat from ${names} — click Accept to connect.`);
         newWaiting.forEach((s) => prevWaitingIds.current.add(s.id));
       }
 
@@ -127,7 +261,6 @@ export default function AdminPage() {
     });
     setActiveSessionId(sessionId);
     await fetchAll();
-    // Mark as read
     await fetch("/api/chat/messages", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -163,7 +296,12 @@ export default function AdminPage() {
       await fetch("/api/chat/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: activeSessionId, text: replyText.trim(), sender: "owner", senderName: "Henry Mbalire" }),
+        body: JSON.stringify({
+          sessionId: activeSessionId,
+          text: replyText.trim(),
+          sender: "owner",
+          senderName: "Henry Mbalire",
+        }),
       });
       setReplyText("");
       await fetchAll();
@@ -174,15 +312,25 @@ export default function AdminPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
-    if (!username.trim() || !password.trim()) { setLoginError("Enter both username and password."); return; }
+    if (!username.trim() || !password.trim()) {
+      setLoginError("Enter both username and password.");
+      return;
+    }
     setIsLoggingIn(true);
     const result = await loginUser(username.trim(), password.trim());
     setIsLoggingIn(false);
-    if (result.success) { setIsAuthenticated(true); setUsername(""); setPassword(""); }
-    else setLoginError(result.error || "Invalid credentials.");
+    if (result.success) {
+      setIsAuthenticated(true);
+      setUsername("");
+      setPassword("");
+    } else {
+      setLoginError(result.error || "Invalid credentials.");
+    }
   };
 
-  const formatTime = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const formatTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
   const formatAge = (iso: string) => {
     const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
     if (diff < 60) return `${diff}s ago`;
@@ -194,53 +342,86 @@ export default function AdminPage() {
   const activeSessions = sessions.filter((s) => s.status === "active");
   const endedSessions = sessions.filter((s) => s.status === "ended");
   const activeSession = sessions.find((s) => s.id === activeSessionId);
-  const activeMessages = activeSessionId ? (sessionMessages[activeSessionId] || []) : [];
+  const activeMessages = activeSessionId ? sessionMessages[activeSessionId] || [] : [];
   const totalUnread = sessions.reduce((acc, s) => acc + (s.unreadCount || 0), 0);
 
-  if (isCheckingAuth) return (
-    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center" style={font}>
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-[#003087] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-        <p className="text-gray-500 text-sm">Verifying session...</p>
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center" style={font}>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#003087] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-gray-500 text-sm">Verifying session...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  if (!isAuthenticated) return (
-    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center px-4" style={font}>
-      <div className="w-full max-w-[400px]">
-        <div className="bg-[#003087] px-6 py-5 text-white text-center">
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3">
-            <span className="text-[#003087] font-bold text-sm">MH</span>
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center px-4" style={font}>
+        <div className="w-full max-w-[400px]">
+          <div className="bg-[#003087] px-6 py-5 text-white text-center">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="text-[#003087] font-bold text-sm">MH</span>
+            </div>
+            <h1 className="text-lg font-semibold">Portfolio Administration</h1>
+            <p className="text-blue-200 text-xs mt-1">Secure Staff Sign-In</p>
           </div>
-          <h1 className="text-lg font-semibold">Portfolio Administration</h1>
-          <p className="text-blue-200 text-xs mt-1">Secure Staff Sign-In</p>
-        </div>
-        <div className="bg-white border border-gray-200 px-6 py-6 shadow-sm">
-          {loginError && <div className="bg-red-50 border-l-4 border-red-600 text-red-700 px-4 py-3 mb-5 text-sm">{loginError}</div>}
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Username</label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username"
-                className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087]" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Password</label>
-              <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPwStrength(e.target.value ? validatePasswordStrength(e.target.value) : null); }} autoComplete="current-password"
-                className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087]" />
-              {pwStrength && <p className={`text-xs mt-1.5 ${pwStrength.valid ? "text-green-600" : "text-amber-600"}`}>{pwStrength.message}</p>}
-            </div>
-            <button type="submit" disabled={isLoggingIn} className="w-full bg-[#003087] hover:bg-[#002070] text-white font-semibold py-3 text-sm transition-colors disabled:opacity-50 mt-2">
-              {isLoggingIn ? "Signing In..." : "Sign In"}
-            </button>
-          </form>
-        </div>
-        <div className="bg-gray-50 border border-t-0 border-gray-200 px-6 py-3 text-center">
-          <p className="text-[11px] text-gray-400">Restricted to authorized personnel only.</p>
+          <div className="bg-white border border-gray-200 px-6 py-6 shadow-sm">
+            {loginError && (
+              <div className="bg-red-50 border-l-4 border-red-600 text-red-700 px-4 py-3 mb-5 text-sm">
+                {loginError}
+              </div>
+            )}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setPwStrength(e.target.value ? validatePasswordStrength(e.target.value) : null);
+                  }}
+                  autoComplete="current-password"
+                  className="w-full border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087]"
+                />
+                {pwStrength && (
+                  <p className={`text-xs mt-1.5 ${pwStrength.valid ? "text-green-600" : "text-amber-600"}`}>
+                    {pwStrength.message}
+                  </p>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={isLoggingIn}
+                className="w-full bg-[#003087] hover:bg-[#002070] text-white font-semibold py-3 text-sm transition-colors disabled:opacity-50 mt-2"
+              >
+                {isLoggingIn ? "Signing In..." : "Sign In"}
+              </button>
+            </form>
+          </div>
+          <div className="bg-gray-50 border border-t-0 border-gray-200 px-6 py-3 text-center">
+            <p className="text-[11px] text-gray-400">Restricted to authorized personnel only.</p>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex flex-col" style={font}>
@@ -251,32 +432,76 @@ export default function AdminPage() {
             <span className="w-2 h-2 bg-white rounded-full animate-pulse flex-shrink-0"></span>
             <span>{banner}</span>
           </div>
-          <button onClick={() => setBanner(null)} className="text-red-200 hover:text-white text-xs ml-4">Dismiss</button>
+          <button onClick={() => setBanner(null)} className="text-red-200 hover:text-white text-xs ml-4">
+            Dismiss
+          </button>
         </div>
       )}
 
       {/* Header */}
       <header className="bg-[#003087] text-white border-b border-[#002070] flex-shrink-0">
-        <div className="px-6 py-4 flex items-center justify-between">
+        <div className="px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
               <span className="text-[#003087] font-bold text-xs">MH</span>
             </div>
             <div>
               <h1 className="font-semibold text-sm">Support Console</h1>
-              <p className="text-blue-200 text-[11px]">Live Chat Management</p>
+              <p className="text-blue-200 text-[11px]">Multi-Session Call Center</p>
             </div>
           </div>
+
           <div className="flex items-center gap-3">
+            {/* Push notification control */}
+            {pushStatus === "granted" ? (
+              <div className="flex items-center gap-2 bg-[#002070] px-3 py-1 rounded text-xs border border-blue-400">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                <span className="text-blue-100">Tab-Closed Alerts Active</span>
+                <button
+                  onClick={handleTestPush}
+                  className="text-xs text-white underline hover:text-blue-200 ml-1"
+                >
+                  Test
+                </button>
+              </div>
+            ) : pushStatus === "prompt" ? (
+              <button
+                onClick={handleEnablePush}
+                disabled={isSubscribingPush}
+                className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                <span>🔔</span>
+                <span>{isSubscribingPush ? "Activating..." : "Enable Tab-Closed Alerts"}</span>
+              </button>
+            ) : pushStatus === "denied" ? (
+              <span className="text-red-300 text-xs bg-[#002070] px-2.5 py-1 rounded">
+                Notifications Blocked in Browser
+              </span>
+            ) : null}
+
             {totalUnread > 0 && (
-              <span className="bg-[#c8102e] text-white text-xs font-bold px-2.5 py-1 rounded-full">{totalUnread} Unread</span>
+              <span className="bg-[#c8102e] text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                {totalUnread} Unread
+              </span>
             )}
-            <button onClick={async () => { await (await import("@/lib/auth")).logoutUser(); setIsAuthenticated(false); }}
-              className="text-blue-200 hover:text-white text-xs border border-blue-400 px-3 py-1.5 transition-colors">
+
+            <button
+              onClick={async () => {
+                await logoutUser();
+                setIsAuthenticated(false);
+              }}
+              className="text-blue-200 hover:text-white text-xs border border-blue-400 px-3 py-1.5 transition-colors"
+            >
               Sign Out
             </button>
           </div>
         </div>
+
+        {pushTestMsg && (
+          <div className="bg-[#002266] text-blue-200 px-6 py-1.5 text-xs text-center border-t border-blue-800">
+            {pushTestMsg}
+          </div>
+        )}
       </header>
 
       {!storageOk && (
@@ -289,7 +514,6 @@ export default function AdminPage() {
 
       {/* Main Layout: Sidebar + Chat Area */}
       <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-
         {/* Sidebar: Sessions */}
         <div className="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 overflow-hidden">
           {/* Stats */}
@@ -312,8 +536,9 @@ export default function AdminPage() {
             {/* Waiting — incoming calls */}
             {waitingSessions.length > 0 && (
               <>
-                <div className="px-4 py-2 bg-amber-50 border-b border-amber-100">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Incoming Requests</span>
+                <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Incoming Calls</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
                 </div>
                 {waitingSessions.map((s) => (
                   <div key={s.id} className="px-4 py-3 border-b border-gray-100 bg-amber-50 hover:bg-amber-100 transition-colors">
@@ -331,9 +556,9 @@ export default function AdminPage() {
                     </div>
                     <button
                       onClick={() => acceptSession(s.id)}
-                      className="w-full bg-[#003087] hover:bg-[#002070] text-white text-xs font-semibold py-1.5 transition-colors"
+                      className="w-full bg-[#003087] hover:bg-[#002070] text-white text-xs font-semibold py-1.5 transition-colors shadow-sm"
                     >
-                      Accept Chat
+                      Answer Chat
                     </button>
                   </div>
                 ))}
@@ -349,8 +574,12 @@ export default function AdminPage() {
                 {activeSessions.map((s) => (
                   <div
                     key={s.id}
-                    onClick={() => { setActiveSessionId(s.id); }}
-                    className={`px-4 py-3 border-b border-gray-100 cursor-pointer transition-colors ${activeSessionId === s.id ? "bg-blue-50 border-l-4 border-l-[#003087]" : "hover:bg-gray-50"}`}
+                    onClick={() => {
+                      setActiveSessionId(s.id);
+                    }}
+                    className={`px-4 py-3 border-b border-gray-100 cursor-pointer transition-colors ${
+                      activeSessionId === s.id ? "bg-blue-50 border-l-4 border-l-[#003087]" : "hover:bg-gray-50"
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -418,7 +647,7 @@ export default function AdminPage() {
               <p className="text-gray-600 font-semibold text-base">No Chat Selected</p>
               <p className="text-gray-400 text-sm mt-2 max-w-xs">
                 {waitingSessions.length > 0
-                  ? `${waitingSessions.length} visitor${waitingSessions.length > 1 ? "s are" : " is"} waiting — click "Accept Chat" to begin.`
+                  ? `${waitingSessions.length} visitor${waitingSessions.length > 1 ? "s are" : " is"} waiting — click "Answer Chat" to begin.`
                   : "Accept an incoming chat request from the sidebar to begin a conversation."}
               </p>
             </div>
@@ -456,17 +685,27 @@ export default function AdminPage() {
                 )}
                 {activeMessages.map((msg, index) => {
                   const isClient = msg.sender === "client";
-                  const showDate = index === 0 || new Date(msg.timestamp).toDateString() !== new Date(activeMessages[index - 1].timestamp).toDateString();
+                  const showDate =
+                    index === 0 ||
+                    new Date(msg.timestamp).toDateString() !== new Date(activeMessages[index - 1].timestamp).toDateString();
                   return (
                     <div key={msg.id}>
                       {showDate && (
                         <div className="text-center text-[11px] text-gray-400 my-2 font-medium uppercase tracking-wider">
-                          {new Date(msg.timestamp).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
+                          {new Date(msg.timestamp).toLocaleDateString([], {
+                            weekday: "long",
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </div>
                       )}
                       <div className={`flex flex-col ${isClient ? "items-start" : "items-end"}`}>
                         <span className="text-[11px] text-gray-500 mb-1 px-1">{msg.senderName}</span>
-                        <div className={`max-w-[70%] px-4 py-2.5 text-sm leading-relaxed ${isClient ? "bg-white border border-gray-200 text-gray-800" : "bg-[#003087] text-white"}`}>
+                        <div
+                          className={`max-w-[70%] px-4 py-2.5 text-sm leading-relaxed ${
+                            isClient ? "bg-white border border-gray-200 text-gray-800" : "bg-[#003087] text-white"
+                          }`}
+                        >
                           {msg.text}
                         </div>
                         <span className="text-[11px] text-gray-400 mt-1 px-1">{formatTime(msg.timestamp)}</span>
@@ -485,7 +724,9 @@ export default function AdminPage() {
                       ref={replyRef}
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) sendReply(); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) sendReply();
+                      }}
                       rows={2}
                       placeholder={`Reply to ${activeSession.visitorName}...`}
                       className="flex-1 border border-gray-300 text-gray-900 text-sm px-3 py-2.5 outline-none focus:border-[#003087] focus:ring-1 focus:ring-[#003087] resize-none"
