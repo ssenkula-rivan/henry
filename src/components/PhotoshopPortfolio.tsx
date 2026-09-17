@@ -139,8 +139,8 @@ export default function PhotoshopPortfolio() {
                 
                 {/* Featured Badge */}
                 {project.featured && (
-                  <div className="absolute top-1 left-1 bg-[#e8c84a] text-black px-1 py-0.5 font-mono text-xs tracking-widest uppercase font-bold">
-                    ★
+                  <div className="absolute top-1 left-1 bg-[#e8c84a] text-black px-1.5 py-0.5 font-mono text-[9px] tracking-widest uppercase font-bold">
+                    FEATURED
                   </div>
                 )}
               </div>

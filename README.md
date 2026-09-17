@@ -2,7 +2,7 @@
 
 A modern, international portfolio website built with Next.js, TypeScript, and Tailwind CSS. Features multi-language support, timezone-aware contact information, and responsive design optimized for global audiences.
 
-## 🚀 Features
+##  Features
 
 - **Modern Tech Stack**: Next.js 16, TypeScript, Tailwind CSS
 - **Multi-Language Support**: English, French, Spanish with instant switching
@@ -14,7 +14,7 @@ A modern, international portfolio website built with Next.js, TypeScript, and Ta
 - **Smooth Animations**: Intersection Observer-based scroll animations
 - **Professional Design**: Dark theme with gold accents and modern typography
 
-## 🛠️ Technologies Used
+## ️ Technologies Used
 
 - **Framework**: Next.js 16 with App Router
 - **Language**: TypeScript
@@ -23,7 +23,7 @@ A modern, international portfolio website built with Next.js, TypeScript, and Ta
 - **Icons**: Emoji icons for lightweight implementation
 - **Animations**: CSS animations and Intersection Observer API
 
-## 📦 Installation
+##  Installation
 
 1. Clone the repository:
 ```bash
@@ -43,7 +43,7 @@ npm run dev
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 🎯 Available Scripts
+##  Available Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
@@ -53,23 +53,23 @@ npm run dev
 - `npm run type-check` - Type checking without emitting
 - `npm run build:analyze` - Build with bundle analysis
 
-## 🌍 Internationalization
+##  Internationalization
 
 The portfolio supports three languages:
-- English (EN) 🇺🇸
-- French (FR) 🇫🇷  
-- Spanish (ES) 🇪🇸
+- English (EN) 
+- French (FR)   
+- Spanish (ES) 
 
 Language switching is instant and preserves the current page state. All content including navigation, sections, and contact information is fully translated.
 
-## ⏰ Timezone Features
+##  Timezone Features
 
 - Real-time clock showing visitor's local time
 - Business hours indicator (9AM-6PM EAT)
 - Availability status based on Uganda timezone
 - Automatic updates every minute
 
-## 🚀 Deployment
+##  Deployment
 
 ### Vercel (Recommended)
 1. Push your code to GitHub
@@ -87,7 +87,7 @@ npm run build
 npm run export
 ```
 
-## 🎨 Customization
+##  Customization
 
 ### Colors
 Primary color scheme is defined in CSS variables:
@@ -105,13 +105,13 @@ Primary color scheme is defined in CSS variables:
 2. Add language option to `LanguageSelector.tsx`
 3. Update font imports if needed
 
-## 📱 Responsive Breakpoints
+##  Responsive Breakpoints
 
 - Mobile: < 520px
 - Tablet: 520px - 900px
 - Desktop: > 900px
 
-## 🔧 Performance Features
+##  Performance Features
 
 - Image optimization with WebP/AVIF support
 - Lazy loading for components
@@ -120,14 +120,14 @@ Primary color scheme is defined in CSS variables:
 - Compression enabled
 - Cache headers configured
 
-## 🛡️ Security
+## ️ Security
 
 - XSS protection headers
 - Content type protection
 - Frame protection
 - Secure defaults
 
-## 📊 Analytics & SEO
+##  Analytics & SEO
 
 - Open Graph tags
 - Twitter Card meta
@@ -135,7 +135,7 @@ Primary color scheme is defined in CSS variables:
 - SEO-friendly URLs
 - Semantic HTML5
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -143,7 +143,7 @@ Primary color scheme is defined in CSS variables:
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
+##  License
 
 © 2025 Mbalire Henry. All rights reserved.
 

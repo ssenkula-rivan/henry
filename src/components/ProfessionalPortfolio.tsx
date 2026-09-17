@@ -16,64 +16,64 @@ interface Project {
 const projects: Project[] = [
   {
     id: 'ps1',
-    title: '🎨 Digital Art',
-    category: '🎨 Digital Art',
-    tools: '🎨 Photoshop',
+    title: 'Digital Art',
+    category: 'Digital Art',
+    tools: 'Photoshop',
     image: '/images/projects/photoshop/WEB1.jpg',
-    description: '🎨 Advanced digital composition 🎨',
+    description: 'Advanced digital composition',
     featured: true
   },
   {
     id: 'ps2',
-    title: '📷 Photo Editing',
-    category: '📷 Photo Editing',
-    tools: '📷 Photoshop',
+    title: 'Photo Editing',
+    category: 'Photo Editing',
+    tools: 'Photoshop',
     image: '/images/projects/photoshop/WEB1-2.jpg',
-    description: '📷 Professional photo retouching 📷',
+    description: 'Professional photo retouching',
     featured: true
   },
   {
     id: 'ps3',
-    title: '🏷️ Brand Design',
-    category: '🏷️ Brand Identity',
-    tools: '🏷️ Photoshop',
+    title: 'Brand Design',
+    category: 'Brand Identity',
+    tools: 'Photoshop',
     image: '/images/projects/photoshop/WEB1-3.jpg',
-    description: '🏷️ Creative brand visual design 🏷️'
+    description: 'Creative brand visual design'
   },
   {
     id: 'ps4',
-    title: '✨ Creative Work',
-    category: '✨ Digital Art',
-    tools: '✨ Photoshop',
+    title: 'Creative Work',
+    category: 'Digital Art',
+    tools: 'Photoshop',
     image: '/images/projects/photoshop/WEB1-4.jpg',
-    description: '✨ Innovative digital composition ✨'
+    description: 'Innovative digital composition'
   },
   {
     id: 'ps5',
-    title: '📢 Marketing',
-    category: '📢 Marketing Design',
-    tools: '📢 Photoshop',
+    title: 'Marketing',
+    category: 'Marketing Design',
+    tools: 'Photoshop',
     image: '/images/projects/photoshop/web1-5.jpg',
-    description: '📢 Professional marketing visual 📢'
+    description: 'Professional marketing visual'
   },
   {
     id: 'ps6',
-    title: '👤 Portrait',
-    category: '👤 Portrait Photography',
-    tools: '👤 Photoshop',
+    title: 'Portrait',
+    category: 'Portrait Photography',
+    tools: 'Photoshop',
     image: '/images/projects/photoshop/WEB 6.jpg',
-    description: '👤 Artistic portrait editing 👤'
+    description: 'Artistic portrait editing'
   }
 ];
 
-const categories = ['🎨 All', '🎨 Digital Art', '📷 Photo Editing', '🏷️ Brand Identity', '📢 Marketing Design', '👤 Portrait Photography'];
+const categories = ['All', 'Digital Art', 'Photo Editing', 'Brand Identity', 'Marketing Design', 'Portrait Photography'];
 
 export default function ProfessionalPortfolio() {
   const { t } = useLanguage();
-  const [selectedCategory, setSelectedCategory] = useState('🎨 All');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
 
-  const filteredProjects = selectedCategory === '🎨 All' 
+  const filteredProjects = selectedCategory === 'All' 
     ? projects 
     : projects.filter(project => project.category === selectedCategory);
 
