@@ -1,5 +1,10 @@
 'use client';
 
+import InstagramIcon from '@/components/InstagramIcon';
+import BehanceIcon from '@/components/BehanceIcon';
+import LinkedInIcon from '@/components/LinkedInIcon';
+import TwitterIcon from '@/components/TwitterIcon';
+
 export default function Footer() {
   return (
     <footer id="contact" className="border-t border-[rgba(139,92,246,0.18)] px-16 py-12 bg-[#0a0a0a]">
@@ -28,21 +33,49 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Social Links */}
+          {/* Social Media */}
           <div>
             <h3 className="font-serif text-xl font-bold text-white mb-4">Follow Me</h3>
-            <div className="flex gap-4">
-              <a href="https://www.instagram.com/alkemy_visuals/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] flex items-center justify-center hover:bg-[#8b5cf6] hover:text-black transition-all duration-300 no-underline">
-                <span>IG</span>
+            <div className="flex gap-4 mb-4">
+              <a 
+                href="https://www.instagram.com/alkemy_visuals/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-10 h-10 bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] flex items-center justify-center hover:bg-[#8b5cf6] hover:text-black transition-all duration-300 no-underline"
+                aria-label="Instagram"
+              >
+                <InstagramIcon />
               </a>
-              <a href="https://www.behance.net/mbalirehenry-1" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] flex items-center justify-center hover:bg-[#8b5cf6] hover:text-black transition-all duration-300 no-underline">
-                <span>Be</span>
+              <a 
+                href="https://www.behance.net/mbalirehenry-1" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-10 h-10 bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] flex items-center justify-center hover:bg-[#8b5cf6] hover:text-black transition-all duration-300 no-underline"
+                aria-label="Behance"
+              >
+                <BehanceIcon />
               </a>
-              <a href="#" className="w-10 h-10 bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] flex items-center justify-center hover:bg-[#8b5cf6] hover:text-black transition-all duration-300 no-underline">
-                <span>Li</span>
+              <a 
+                href="#" 
+                className="w-10 h-10 bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] flex items-center justify-center hover:bg-[#8b5cf6] hover:text-black transition-all duration-300 no-underline"
+                aria-label="LinkedIn"
+              >
+                <LinkedInIcon />
               </a>
-              <a href="#" className="w-10 h-10 bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] flex items-center justify-center hover:bg-[#8b5cf6] hover:text-black transition-all duration-300 no-underline">
-                <span>𝕏</span>
+              <a 
+                href="#" 
+                className="w-10 h-10 bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] flex items-center justify-center hover:bg-[#8b5cf6] hover:text-black transition-all duration-300 no-underline"
+                aria-label="Twitter"
+              >
+                <TwitterIcon />
+              </a>
+            </div>
+            <div className="space-y-2">
+              <a href="https://www.instagram.com/alkemy_visuals/" target="_blank" rel="noopener noreferrer" className="block text-[rgba(245,240,235,0.8)] hover:text-[#8b5cf6] transition-colors no-underline text-sm">
+                @alkemy_visuals
+              </a>
+              <a href="https://www.behance.net/mbalirehenry-1" target="_blank" rel="noopener noreferrer" className="block text-[rgba(245,240,235,0.8)] hover:text-[#8b5cf6] transition-colors no-underline text-sm">
+                Behance Portfolio
               </a>
             </div>
           </div>
