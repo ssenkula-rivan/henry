@@ -2,20 +2,20 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Mbalire Henry — Web Developer & UI/UX Designer | Portfolio",
-  description: "Professional web developer and UI/UX designer specializing in React, Next.js, and modern web technologies. Based in Kampala, Uganda, working globally.",
-  keywords: ["web developer", "UI/UX designer", "React", "Next.js", "TypeScript", "portfolio", "Kampala", "Uganda", "freelance developer"],
+  title: "Mbalire Henry — Graphic Designer & Visual Artist | Portfolio",
+  description: "Professional graphic designer and visual artist specializing in brand identity, print design, and digital art. Based in Kampala, Uganda, working globally.",
+  keywords: ["graphic designer", "visual artist", "brand identity", "print design", "digital art", "portfolio", "Kampala", "Uganda", "freelance designer", "Adobe Creative Suite"],
   authors: [{ name: "Mbalire Henry" }],
   openGraph: {
-    title: "Mbalire Henry — Web Developer & UI/UX Designer",
-    description: "Creating beautiful, responsive, and user-friendly web experiences with modern technologies.",
+    title: "Mbalire Henry — Graphic Designer & Visual Artist",
+    description: "Creating stunning visual experiences through brand identity, print design, and digital art.",
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mbalire Henry — Web Developer & UI/UX Designer",
-    description: "Professional web developer specializing in React, Next.js, and creating exceptional user experiences.",
+    title: "Mbalire Henry — Graphic Designer & Visual Artist",
+    description: "Professional graphic designer specializing in brand identity, visual storytelling, and creative design solutions.",
   },
   robots: {
     index: true,

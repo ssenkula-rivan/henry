@@ -31,16 +31,18 @@ export default function About() {
         <div className="grid grid-cols-2 gap-12 items-center mb-16">
           <div className="fade-up opacity-0 translate-y-8 transition-all duration-700">
             <h3 className="font-serif text-3xl font-bold text-white mb-6">
-              Passionate Web Developer from Kampala, Uganda
+              Passionate Graphic Designer & Visual Artist from Kampala, Uganda
             </h3>
             <p className="text-[rgba(245,240,235,0.8)] leading-relaxed mb-6">
-              I'm a dedicated web developer with a passion for creating beautiful, functional, 
-              and user-centered digital experiences. With 4+ years of experience in the field, 
-              I am always looking for new and innovative ways to bring my clients' visions to life.
+              I'm a dedicated graphic designer and visual artist with a passion for creating stunning 
+              visual experiences through brand identity, print design, and digital art. With 4+ years 
+              of experience in the creative industry, I bring fresh perspectives and innovative solutions 
+              to every project.
             </p>
             <p className="text-[rgba(245,240,235,0.8)] leading-relaxed">
-              I believe that design is about more than just making things look pretty – it's about 
-              solving problems and creating intuitive, enjoyable experiences for users.
+              I believe that great design is about more than aesthetics – it's about telling stories, 
+              building brands, and creating meaningful connections between brands and their audiences 
+              through compelling visual communication.
             </p>
           </div>
 

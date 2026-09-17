@@ -18,7 +18,7 @@ export default function Hero() {
   }, []);
 
   const technologies = [
-    'HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'Tailwind CSS', 'Git'
+    'Photoshop', 'Illustrator', 'InDesign', 'Figma', 'After Effects', 'Blender', 'Lightroom', 'Premiere Pro', 'Dimension'
   ];
 
   return (
@@ -38,12 +38,12 @@ export default function Hero() {
         </h1>
         
         <h2 className="hero-title text-2xl font-medium text-[rgba(245,240,235,0.9)] mb-6">
-          Web Developer & UI/UX Designer
+          Graphic Designer & Visual Artist
         </h2>
         
         <p className="hero-bio text-base leading-relaxed text-[rgba(245,240,235,0.7)] max-w-[500px] mb-8">
-          I create beautiful, responsive, and user-friendly websites that help businesses grow. 
-          With expertise in modern web technologies, I turn ideas into reality.
+          I create stunning visual experiences through graphic design, brand identity, and digital art. 
+          With expertise in Adobe Creative Suite and modern design tools, I bring creative visions to life.
         </p>
         
         <div className="hero-cta flex gap-4 items-center mb-10">
@@ -56,7 +56,7 @@ export default function Hero() {
         </div>
         
         <div className="technologies-section">
-          <h3 className="font-mono text-xs tracking-[0.12em] uppercase text-[#888] mb-4">Technologies I work with:</h3>
+          <h3 className="font-mono text-xs tracking-[0.12em] uppercase text-[#888] mb-4">Design tools I work with:</h3>
           <div className="technologies-list flex flex-wrap gap-3">
             {technologies.map((tech, index) => (
               <span key={index} className="tech-item bg-[#141414] border border-[rgba(139,92,246,0.3)] text-[#8b5cf6] px-4 py-2 font-mono text-xs tracking-wider uppercase hover:bg-[#8b5cf6] hover:text-black transition-all duration-200 cursor-default">
@@ -72,15 +72,15 @@ export default function Hero() {
           {/* Frame border */}
           <div className="absolute inset-[-12px] border-2 border-[#8b5cf6] rotate-3 opacity-50"></div>
           
-          {/* DEVELOPER text watermark */}
+          {/* DESIGNER text watermark */}
           <div className="absolute bottom-[-2rem] right-[-3rem] font-serif text-20xl font-black text-transparent [-webkit-text-stroke:1px_rgba(139,92,246,0.2)] pointer-events-none z-[-1]">
-            DEVELOPER
+            DESIGNER
           </div>
           
           {/* Photo with fallback */}
           <img 
             src="/MIbB4.jpg.jpeg" 
-            alt="Mbalire Henry — Web Developer" 
+            alt="Mbalire Henry — Graphic Designer" 
             className="w-full h-full object-cover object-center-top block filter grayscale-[20%] contrast-[1.05]"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -91,7 +91,7 @@ export default function Hero() {
           
           {/* Photo badge */}
           <div className="absolute bottom-[-1.5rem] left-[-1.5rem] bg-[#8b5cf6] text-black p-4 font-mono text-xs tracking-widest uppercase font-bold leading-6">
-            Web<br />Developer<br />— Kampala, UG
+            Graphic<br />Designer<br />— Kampala, UG
           </div>
         </div>
       </div>

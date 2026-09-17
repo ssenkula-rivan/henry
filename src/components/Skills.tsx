@@ -26,15 +26,15 @@ export default function Skills() {
   }, []);
 
   const skills = [
-    { name: 'HTML5', level: 95, category: 'Expert' },
-    { name: 'CSS3', level: 90, category: 'Expert' },
-    { name: 'JavaScript', level: 88, category: 'Advanced' },
-    { name: 'TypeScript', level: 85, category: 'Advanced' },
-    { name: 'React', level: 92, category: 'Expert' },
-    { name: 'Next.js', level: 88, category: 'Advanced' },
-    { name: 'Node.js', level: 80, category: 'Proficient' },
-    { name: 'Tailwind CSS', level: 90, category: 'Expert' },
-    { name: 'Git', level: 85, category: 'Advanced' },
+    { name: 'Adobe Photoshop', level: 95, category: 'Expert' },
+    { name: 'Adobe Illustrator', level: 90, category: 'Expert' },
+    { name: 'Adobe InDesign', level: 88, category: 'Advanced' },
+    { name: 'Figma', level: 85, category: 'Advanced' },
+    { name: 'After Effects', level: 82, category: 'Advanced' },
+    { name: 'Blender', level: 75, category: 'Proficient' },
+    { name: 'Lightroom', level: 90, category: 'Expert' },
+    { name: 'Premiere Pro', level: 78, category: 'Proficient' },
+    { name: 'Brand Identity', level: 92, category: 'Expert' },
   ];
 
   return (

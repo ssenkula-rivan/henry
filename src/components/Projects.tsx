@@ -19,22 +19,22 @@ export default function Projects() {
 
   const projects = [
     {
-      title: 'E-Commerce Platform',
-      description: 'A full-featured online shopping platform with product management, cart functionality, and secure payment integration.',
-      technologies: ['React', 'Node.js', 'MongoDB', 'Stripe'],
-      image: '/ecommerce-placeholder.jpg'
+      title: 'Brand Identity Design',
+      description: 'Complete brand identity system including logo design, color palette, typography, and brand guidelines for a tech startup.',
+      technologies: ['Illustrator', 'Photoshop', 'InDesign'],
+      image: '/brand-identity-placeholder.jpg'
     },
     {
-      title: 'Task Management App',
-      description: 'A productivity application for managing tasks, projects, and team collaboration with real-time updates.',
-      technologies: ['Next.js', 'TypeScript', 'PostgreSQL', 'Socket.io'],
-      image: '/task-placeholder.jpg'
+      title: 'Social Media Campaign',
+      description: 'Visual assets and creative direction for a comprehensive social media marketing campaign across multiple platforms.',
+      technologies: ['Photoshop', 'After Effects', 'Premiere Pro'],
+      image: '/social-campaign-placeholder.jpg'
     },
     {
-      title: 'Crypto Dashboard',
-      description: 'A real-time cryptocurrency tracking dashboard with live price updates, portfolio management, and market analysis.',
-      technologies: ['React', 'Chart.js', 'CoinGecko API', 'Tailwind CSS'],
-      image: '/crypto-placeholder.jpg'
+      title: 'Product Photography',
+      description: 'Professional product photography and post-production editing for e-commerce and marketing materials.',
+      technologies: ['Lightroom', 'Photoshop', 'Studio Lighting'],
+      image: '/product-photo-placeholder.jpg'
     }
   ];
 

@@ -19,22 +19,22 @@ export default function Blog() {
 
   const blogPosts = [
     {
-      title: 'Getting Started with Next.js 14',
-      excerpt: 'Learn how to build modern web applications with the latest Next.js features and improvements.',
+      title: 'The Art of Brand Storytelling',
+      excerpt: 'Learn how to create compelling brand narratives that connect with audiences and build lasting relationships.',
       date: 'March 15, 2024',
-      category: 'Web Development'
+      category: 'Branding'
     },
     {
-      title: 'Mastering Tailwind CSS',
-      excerpt: 'A comprehensive guide to utility-first CSS and how to leverage Tailwind for rapid development.',
+      title: 'Color Psychology in Design',
+      excerpt: 'Understanding how colors influence perception and emotion in visual communication and brand identity.',
       date: 'March 10, 2024',
-      category: 'CSS'
+      category: 'Design Theory'
     },
     {
-      title: 'TypeScript Best Practices',
-      excerpt: 'Essential TypeScript patterns and practices for writing type-safe and maintainable code.',
+      title: 'Typography Trends 2024',
+      excerpt: 'Exploring the latest typography trends and how to use them effectively in modern design projects.',
       date: 'March 5, 2024',
-      category: 'JavaScript'
+      category: 'Typography'
     }
   ];
 
