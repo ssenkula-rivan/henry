@@ -4,11 +4,12 @@
 :root {
   --black: #0a0a0a;
   --white: #f5f0eb;
-  --gold: #e8c84a;
-  --gold-dark: #b8981e;
+  --purple: #8b5cf6;
+  --purple-light: #a78bfa;
+  --purple-dark: #7c3aed;
   --gray: #888;
   --card-bg: #141414;
-  --border: rgba(232,200,74,0.18);
+  --border: rgba(139,92,246,0.18);
   --background: #0a0a0a;
   --foreground: #f5f0eb;
 }
@@ -88,7 +89,7 @@ html {
 
 /* Selection styling */
 ::selection {
-  background: rgba(232, 200, 74, 0.3);
+  background: rgba(139, 92, 246, 0.3);
   color: white;
 }
 
@@ -102,12 +103,12 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #e8c84a, #d4a94a);
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #d4a94a, #b8981e);
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
 }
 
 /* Fix z-index issues */

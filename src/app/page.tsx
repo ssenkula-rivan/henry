@@ -2,26 +2,26 @@
 
 import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
-import Marquee from '@/components/Marquee';
+import About from '@/components/About';
 import Skills from '@/components/Skills';
-import Experience from '@/components/Experience';
-import PhotoshopPortfolio from '@/components/PhotoshopPortfolio';
-import Contact from '@/components/Contact';
+import Projects from '@/components/Projects';
+import Blog from '@/components/Blog';
+import CTA from '@/components/CTA';
+import Testimonial from '@/components/Testimonial';
 import Footer from '@/components/Footer';
-import LanguageSelector from '@/components/LanguageSelector';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Navigation />
       <Hero />
-      <Marquee />
+      <About />
       <Skills />
-      <Experience />
-      <PhotoshopPortfolio />
-      <Contact />
+      <Projects />
+      <Blog />
+      <CTA />
+      <Testimonial />
       <Footer />
-      <LanguageSelector />
     </div>
   );
 }

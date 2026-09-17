@@ -3,7 +3,12 @@ const nextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
   // Enable image optimization
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+      },
+    ],
     formats: ['image/webp', 'image/avif'],
   },
   
