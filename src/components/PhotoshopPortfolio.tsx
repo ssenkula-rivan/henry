@@ -80,9 +80,7 @@ export default function PhotoshopPortfolio() {
         <div className="text-center mb-16">
           {/* Adobe Photoshop Icon */}
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-[#31A8FF] to-[#0078D7] rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-2xl">Ps</span>
-            </div>
+            <img src="/icons/icon-ps.png" alt="Adobe Photoshop" width={80} height={80} className="object-contain" />
           </div>
           
           <div className="section-tag font-mono text-xs tracking-[0.3em] uppercase text-[#e8c84a] mb-2">
@@ -122,9 +120,7 @@ export default function PhotoshopPortfolio() {
                   <div className="space-y-1">
                     {/* Photoshop Badge */}
                     <div className="flex items-center gap-1">
-                      <div className="w-4 h-4 bg-[#31A8FF] rounded flex items-center justify-center">
-                        <span className="text-white font-bold text-xs">Ps</span>
-                      </div>
+                      <img src="/icons/icon-ps.png" alt="Photoshop" width={16} height={16} className="object-contain" />
                       <span className="text-[#31A8FF] font-mono text-xs tracking-[0.1em] uppercase">
                         Photoshop
                       </span>
